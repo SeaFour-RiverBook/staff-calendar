@@ -34,6 +34,8 @@
     .time-label { height: calc(var(--slot-height) * 4); padding: 0 7px; transform: translateY(-8px); color: var(--muted); text-align: right; font-size: 11px; white-space: nowrap; }
     .staff-track { position: relative; height: calc(var(--slot-height) * 48); border-right: 1px solid var(--line); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) - 1px), #edf1f5 calc(var(--slot-height) - 1px), #edf1f5 var(--slot-height)), repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) * 4 - 1px), var(--hour-line) calc(var(--slot-height) * 4 - 1px), var(--hour-line) calc(var(--slot-height) * 4)); }
     .staff-track:last-child { border-right: 0; }
+    .staff-track { user-select: none; }
+    .selection-preview { position: absolute; left: 2px; right: 2px; z-index: 1; border: 2px solid #356b91; border-radius: 4px; background: #356b9126; pointer-events: none; }
     .event { position: absolute; left: 3px; right: 3px; z-index: 2; overflow: hidden; border: 1px solid transparent; border-radius: 5px; padding: 3px 5px; text-align: left; font-size: 11px; line-height: 1.35; white-space: normal; }
     .event strong, .event span { display: block; overflow: hidden; text-overflow: ellipsis; }
     .event .event-time { font-size: 10px; opacity: .85; }
@@ -73,7 +75,7 @@
         <div id="dateLabel" class="date-label" aria-live="polite"></div>
       </div>
     </header>
-    <p class="hint">全スタッフ表示 ／ 15分単位 ／ 表示時間 8:00〜20:00 ／ 空き枠をクリックして予定を追加</p>
+    <p class="hint">全スタッフ表示 ／ 15分単位 ／ 表示時間 8:00〜20:00 ／ 空き枠をドラッグして時間を指定、クリックでも予定を追加</p>
     <section class="calendar-shell" aria-label="スタッフ別スケジュール">
       <div id="calendar" class="calendar"><div class="corner"></div></div>
     </section>
@@ -190,12 +192,67 @@
         const track = document.createElement("div");
         track.className = "staff-track";
         track.setAttribute("aria-label", `${name}の予定欄`);
-        track.addEventListener("click", (event) => {
+        let dragState = null;
+        let selectionPreview = null;
+
+        function slotAt(clientY) {
           const rect = track.getBoundingClientRect();
-          const y = event.clientY - rect.top;
-          const slot = Math.max(0, Math.min(47, Math.floor(y / 20)));
-          const start = 8 * 60 + slot * 15;
-          openModal({ staff: name, start: minutesToTime(start), end: minutesToTime(Math.min(start + 60, 20 * 60)), category: "other", memo: "" });
+          const y = Math.max(0, Math.min(959, clientY - rect.top));
+          return Math.max(0, Math.min(47, Math.floor(y / 20)));
+        }
+
+        function updateSelection(currentSlot) {
+          if (!dragState) return;
+          dragState.currentSlot = currentSlot;
+          const first = Math.min(dragState.startSlot, currentSlot);
+          const last = Math.max(dragState.startSlot, currentSlot);
+          selectionPreview.style.top = (first * 20) + "px";
+          selectionPreview.style.height = ((last - first + 1) * 20 - 2) + "px";
+        }
+
+        track.addEventListener("pointerdown", (event) => {
+          if (event.button !== 0 || event.target.closest(".event")) return;
+          const startSlot = slotAt(event.clientY);
+          dragState = { startSlot, currentSlot: startSlot, moved: false };
+          selectionPreview = document.createElement("div");
+          selectionPreview.className = "selection-preview";
+          track.appendChild(selectionPreview);
+          updateSelection(startSlot);
+          track.setPointerCapture(event.pointerId);
+        });
+
+        track.addEventListener("pointermove", (event) => {
+          if (!dragState) return;
+          const currentSlot = slotAt(event.clientY);
+          if (currentSlot !== dragState.startSlot) dragState.moved = true;
+          updateSelection(currentSlot);
+        });
+
+        track.addEventListener("pointerup", (event) => {
+          if (!dragState) return;
+          const state = dragState;
+          const endSlot = slotAt(event.clientY);
+          dragState = null;
+          if (selectionPreview) selectionPreview.remove();
+          selectionPreview = null;
+
+          const first = state.moved ? Math.min(state.startSlot, endSlot) : state.startSlot;
+          const lastExclusive = state.moved ? Math.max(state.startSlot, endSlot) + 1 : Math.min(state.startSlot + 4, 48);
+          const start = 8 * 60 + first * 15;
+          const end = 8 * 60 + lastExclusive * 15;
+          openModal({
+            staff: name,
+            start: minutesToTime(start),
+            end: minutesToTime(end),
+            category: "other",
+            memo: ""
+          });
+        });
+
+        track.addEventListener("pointercancel", () => {
+          dragState = null;
+          if (selectionPreview) selectionPreview.remove();
+          selectionPreview = null;
         });
 
         for (const item of events.filter(item => item.staff === name)) {
