@@ -8,13 +8,8 @@
   <style>
     :root {
       color-scheme: light;
-      --ink: #263445;
-      --muted: #718096;
-      --line: #e4e9ef;
-      --hour-line: #cbd5df;
-      --brand: #356b91;
-      --brand-soft: #eaf2f8;
-      --slot-height: 20px;
+      --ink: #263445; --muted: #718096; --line: #e4e9ef;
+      --hour-line: #cbd5df; --brand: #356b91; --slot-height: 20px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP", sans-serif;
     }
     * { box-sizing: border-box; }
@@ -25,9 +20,9 @@
     .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     button { border: 1px solid #d5dde6; background: #fff; color: var(--ink); border-radius: 7px; padding: 8px 13px; font-size: 14px; cursor: pointer; }
     button:hover { background: #f0f5f9; }
-    button:focus-visible { outline: 3px solid #9bc2df; outline-offset: 2px; }
-    .today { color: #fff; background: var(--brand); border-color: var(--brand); }
-    .today:hover { background: #285775; }
+    button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #9bc2df; outline-offset: 2px; }
+    .today, .primary { color: #fff; background: var(--brand); border-color: var(--brand); }
+    .today:hover, .primary:hover { background: #285775; }
     .date-label { min-width: 190px; text-align: center; font-size: 18px; font-weight: 650; }
     .hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
     .calendar-shell { overflow: auto; max-height: calc(100vh - 155px); min-height: 420px; border: 1px solid #dce3eb; border-radius: 10px; background: #fff; box-shadow: 0 2px 8px #23384d0a; }
@@ -39,7 +34,26 @@
     .time-label { height: calc(var(--slot-height) * 4); padding: 0 7px; transform: translateY(-8px); color: var(--muted); text-align: right; font-size: 11px; white-space: nowrap; }
     .staff-track { position: relative; height: calc(var(--slot-height) * 48); border-right: 1px solid var(--line); background-image: repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) - 1px), #edf1f5 calc(var(--slot-height) - 1px), #edf1f5 var(--slot-height)), repeating-linear-gradient(to bottom, transparent 0, transparent calc(var(--slot-height) * 4 - 1px), var(--hour-line) calc(var(--slot-height) * 4 - 1px), var(--hour-line) calc(var(--slot-height) * 4)); }
     .staff-track:last-child { border-right: 0; }
+    .event { position: absolute; left: 3px; right: 3px; z-index: 2; overflow: hidden; border: 1px solid transparent; border-radius: 5px; padding: 3px 5px; text-align: left; font-size: 11px; line-height: 1.35; white-space: normal; }
+    .event strong, .event span { display: block; overflow: hidden; text-overflow: ellipsis; }
+    .event .event-time { font-size: 10px; opacity: .85; }
+    .event.bath { background: #dff1fb; border-color: #a8d6ec; color: #174d6b; }
+    .event.transport { background: #fff0d9; border-color: #f2d09a; color: #754b0a; }
+    .event.visit { background: #e4f3e5; border-color: #b4dcb8; color: #285b2d; }
+    .event.meeting { background: #eee7fb; border-color: #cbb9ee; color: #513a7d; }
+    .event.other { background: #fce6ed; border-color: #edbdcc; color: #7c344b; }
     .bottom-note { padding: 12px 2px 0; color: var(--muted); font-size: 12px; }
+    .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; padding: 16px; background: #17253680; }
+    .modal-backdrop.open { display: flex; }
+    .modal { width: min(100%, 440px); max-height: 90vh; overflow: auto; padding: 22px; border-radius: 12px; background: #fff; box-shadow: 0 12px 40px #14223540; }
+    .modal h2 { margin: 0 0 16px; font-size: 19px; }
+    .field { display: grid; gap: 6px; margin: 12px 0; }
+    .field label { font-size: 13px; font-weight: 650; }
+    .field input, .field select, .field textarea { width: 100%; min-width: 0; padding: 9px 10px; border: 1px solid #cfd8e2; border-radius: 7px; background: #fff; color: var(--ink); font: inherit; }
+    .time-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .modal-actions { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+    .modal-actions .spacer { flex: 1; }
+    .delete { color: #a22b36; border-color: #e6b8bd; }
     @media (max-width: 700px) {
       .app { padding: 14px 10px 20px; }
       .topbar { align-items: flex-start; flex-direction: column; }
@@ -59,20 +73,94 @@
         <div id="dateLabel" class="date-label" aria-live="polite"></div>
       </div>
     </header>
-    <p class="hint">全スタッフ表示 ／ 15分単位 ／ 表示時間 8:00〜20:00</p>
+    <p class="hint">全スタッフ表示 ／ 15分単位 ／ 表示時間 8:00〜20:00 ／ 空き枠をクリックして予定を追加</p>
     <section class="calendar-shell" aria-label="スタッフ別スケジュール">
-      <div id="calendar" class="calendar">
-        <div class="corner"></div>
-      </div>
+      <div id="calendar" class="calendar"><div class="corner"></div></div>
     </section>
-    <p class="bottom-note">※ 現在は画面レイアウトの試作版です。予定の登録・編集・保存機能はこれから追加します。</p>
+    <p class="bottom-note">※ 試作版：予定はこのブラウザ内に保存されます。別の端末とはまだ共有されません。</p>
   </main>
+
+  <div id="modalBackdrop" class="modal-backdrop" role="presentation">
+    <section class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <h2 id="modalTitle">予定を登録</h2>
+      <form id="eventForm">
+        <div class="field">
+          <label for="eventTitle">予定名</label>
+          <input id="eventTitle" maxlength="40" required placeholder="例：入浴介助">
+        </div>
+        <div class="field">
+          <label for="eventStaff">スタッフ</label>
+          <select id="eventStaff"></select>
+        </div>
+        <div class="time-row">
+          <div class="field">
+            <label for="eventStart">開始時刻</label>
+            <input id="eventStart" type="time" min="08:00" max="19:45" step="900" required>
+          </div>
+          <div class="field">
+            <label for="eventEnd">終了時刻</label>
+            <input id="eventEnd" type="time" min="08:15" max="20:00" step="900" required>
+          </div>
+        </div>
+        <div class="field">
+          <label for="eventCategory">予定の種類・色</label>
+          <select id="eventCategory">
+            <option value="bath">入浴</option>
+            <option value="transport">送迎</option>
+            <option value="visit">訪問</option>
+            <option value="meeting">会議</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="eventMemo">メモ（50文字以内）</label>
+          <textarea id="eventMemo" maxlength="50" rows="2" placeholder="必要に応じて入力"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button id="deleteEvent" class="delete" type="button" hidden>削除</button>
+          <span class="spacer"></span>
+          <button id="cancelModal" type="button">キャンセル</button>
+          <button class="primary" type="submit">保存</button>
+        </div>
+      </form>
+    </section>
+  </div>
+
   <script>
     const staffMembers = Array.from({ length: 10 }, (_, i) => `スタッフ${i + 1}`);
     const calendar = document.getElementById("calendar");
     const dateLabel = document.getElementById("dateLabel");
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const eventForm = document.getElementById("eventForm");
+    const staffSelect = document.getElementById("eventStaff");
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
+    let editingId = null;
+
+    for (const name of staffMembers) {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      staffSelect.appendChild(option);
+    }
+
+    function dateKey() {
+      return [currentDate.getFullYear(), String(currentDate.getMonth() + 1).padStart(2, "0"), String(currentDate.getDate()).padStart(2, "0")].join("-");
+    }
+    function loadEvents() {
+      try { return JSON.parse(localStorage.getItem("staff-calendar-" + dateKey()) || "[]"); }
+      catch { return []; }
+    }
+    function saveEvents(events) {
+      localStorage.setItem("staff-calendar-" + dateKey(), JSON.stringify(events));
+    }
+    function toMinutes(value) {
+      const [h, m] = value.split(":").map(Number);
+      return h * 60 + m;
+    }
+    function formatTime(value) {
+      return value;
+    }
 
     function renderCalendar() {
       calendar.replaceChildren();
@@ -97,10 +185,44 @@
       }
       calendar.appendChild(timeColumn);
 
+      const events = loadEvents();
       for (const name of staffMembers) {
         const track = document.createElement("div");
         track.className = "staff-track";
         track.setAttribute("aria-label", `${name}の予定欄`);
+        track.addEventListener("click", (event) => {
+          const rect = track.getBoundingClientRect();
+          const y = event.clientY - rect.top;
+          const slot = Math.max(0, Math.min(47, Math.floor(y / 20)));
+          const start = 8 * 60 + slot * 15;
+          openModal({ staff: name, start: minutesToTime(start), end: minutesToTime(Math.min(start + 60, 20 * 60)), category: "other", memo: "" });
+        });
+
+        for (const item of events.filter(item => item.staff === name)) {
+          const start = toMinutes(item.start);
+          const end = toMinutes(item.end);
+          const block = document.createElement("button");
+          block.type = "button";
+          block.className = `event ${item.category}`;
+          block.style.top = ((start - 480) / 15 * 20) + "px";
+          block.style.height = Math.max(20, (end - start) / 15 * 20 - 2) + "px";
+          const title = document.createElement("strong");
+          title.textContent = item.title;
+          const time = document.createElement("span");
+          time.className = "event-time";
+          time.textContent = `${item.start}〜${item.end}`;
+          block.append(title, time);
+          if (item.memo) {
+            const memo = document.createElement("span");
+            memo.textContent = item.memo;
+            block.appendChild(memo);
+          }
+          block.addEventListener("click", (event) => {
+            event.stopPropagation();
+            openModal(item);
+          });
+          track.appendChild(block);
+        }
         calendar.appendChild(track);
       }
 
@@ -109,11 +231,76 @@
       }).format(currentDate);
     }
 
+    function minutesToTime(minutes) {
+      return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+    }
+
+    function openModal(item = {}) {
+      editingId = item.id || null;
+      document.getElementById("modalTitle").textContent = editingId ? "予定を編集" : "予定を登録";
+      document.getElementById("eventTitle").value = item.title || "";
+      staffSelect.value = item.staff || staffMembers[0];
+      document.getElementById("eventStart").value = item.start || "08:00";
+      document.getElementById("eventEnd").value = item.end || "09:00";
+      document.getElementById("eventCategory").value = item.category || "other";
+      document.getElementById("eventMemo").value = item.memo || "";
+      document.getElementById("deleteEvent").hidden = !editingId;
+      modalBackdrop.classList.add("open");
+      document.getElementById("eventTitle").focus();
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove("open");
+      editingId = null;
+    }
+
+    eventForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const title = document.getElementById("eventTitle").value.trim();
+      const start = document.getElementById("eventStart").value;
+      const end = document.getElementById("eventEnd").value;
+      const startMinutes = toMinutes(start);
+      const endMinutes = toMinutes(end);
+      if (!title) return;
+      if (startMinutes < 480 || endMinutes > 1200 || startMinutes % 15 || endMinutes % 15 || endMinutes <= startMinutes) {
+        alert("時刻は8:00〜20:00の範囲で、15分単位かつ終了時刻が開始時刻より後になるように設定してください。");
+        return;
+      }
+      const events = loadEvents();
+      const item = {
+        id: editingId || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now())),
+        title,
+        staff: staffSelect.value,
+        start, end,
+        category: document.getElementById("eventCategory").value,
+        memo: document.getElementById("eventMemo").value.trim()
+      };
+      const index = events.findIndex(event => event.id === editingId);
+      if (index >= 0) events[index] = item;
+      else events.push(item);
+      saveEvents(events);
+      closeModal();
+      renderCalendar();
+    });
+
+    document.getElementById("deleteEvent").addEventListener("click", () => {
+      if (!editingId || !confirm("この予定を削除しますか？")) return;
+      saveEvents(loadEvents().filter(item => item.id !== editingId));
+      closeModal();
+      renderCalendar();
+    });
+    document.getElementById("cancelModal").addEventListener("click", closeModal);
+    modalBackdrop.addEventListener("click", (event) => {
+      if (event.target === modalBackdrop) closeModal();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") closeModal();
+    });
+
     function moveDate(days) {
       currentDate.setDate(currentDate.getDate() + days);
       renderCalendar();
     }
-
     document.getElementById("prevDay").addEventListener("click", () => moveDate(-1));
     document.getElementById("nextDay").addEventListener("click", () => moveDate(1));
     document.getElementById("today").addEventListener("click", () => {
