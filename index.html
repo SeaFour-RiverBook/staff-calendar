@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f5f7fa">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <title>スタッフカレンダー</title>
+  <title>和縁の里 カレンダー</title>
   <style>
     :root {
       color-scheme: light;
@@ -17,7 +17,7 @@
     body { margin: 0; background: #f5f7fa; color: var(--ink); }
     .app { max-width: 1800px; margin: 0 auto; padding: 22px 24px 30px; }
     .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-    h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .02em; }
+    h1 { display: flex; align-items: center; gap: 9px; margin: 0; font-size: 22px; font-weight: 700; letter-spacing: .02em; }\n    h1 img { display: block; width: 34px; height: 34px; object-fit: contain; }
     .toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     button { border: 1px solid #d5dde6; background: #fff; color: var(--ink); border-radius: 7px; padding: 8px 13px; font-size: 14px; cursor: pointer; }
     button:hover { background: #f0f5f9; }
@@ -84,7 +84,7 @@
 <body>
   <main class="app">
     <header class="topbar">
-      <h1>スタッフカレンダー</h1>
+      <h1><img src="/favicon.svg" alt=""><span>和縁の里 カレンダー</span></h1>
       <div class="toolbar" aria-label="日付操作">
         <button id="prevDay" type="button" aria-label="前の日">‹ 前日</button>
         <button id="today" class="today" type="button">今日</button>
