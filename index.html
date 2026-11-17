@@ -23,7 +23,23 @@
     button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #9bc2df; outline-offset: 2px; }
     .today, .primary { color: #fff; background: var(--brand); border-color: var(--brand); }
     .today:hover, .primary:hover { background: #285775; }
+    .date-picker-wrap { position: relative; }
     .date-label { min-width: 190px; text-align: center; font-size: 18px; font-weight: 650; }
+    .date-trigger { border: 0; padding: 8px 10px; background: transparent; }
+    .date-trigger:hover { background: #eaf1f6; }
+    .month-popup { position: absolute; top: calc(100% + 8px); right: 0; z-index: 15; display: none; width: 286px; padding: 14px; border: 1px solid #dce3eb; border-radius: 10px; background: #fff; box-shadow: 0 8px 28px #20364d26; }
+    .month-popup.open { display: block; }
+    .month-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .month-heading strong { font-size: 15px; }
+    .month-heading button { padding: 5px 9px; }
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+    .month-weekday { padding: 5px 0; color: var(--muted); font-size: 11px; }
+    .month-day { min-width: 0; padding: 7px 0; border: 0; border-radius: 50%; font-size: 12px; }
+    .month-day.outside { color: #b4bdc7; }
+    .month-day.selected { color: #fff; background: var(--brand); }
+    .month-day.today-mark:not(.selected) { color: var(--brand); font-weight: 750; box-shadow: inset 0 0 0 1px var(--brand); }
+    .month-day:hover { background: #eaf1f6; }
+    .month-day.selected:hover { background: #285775; }
     .hint { margin: 0 0 12px; color: var(--muted); font-size: 13px; }
     .calendar-shell { overflow: auto; max-height: calc(100vh - 155px); min-height: 420px; border: 1px solid #dce3eb; border-radius: 10px; background: #fff; box-shadow: 0 2px 8px #23384d0a; }
     .calendar { display: grid; grid-template-columns: 58px repeat(10, minmax(112px, 1fr)); min-width: 1180px; }
@@ -72,7 +88,13 @@
         <button id="prevDay" type="button" aria-label="前の日">‹ 前日</button>
         <button id="today" class="today" type="button">今日</button>
         <button id="nextDay" type="button" aria-label="次の日">翌日 ›</button>
-        <div id="dateLabel" class="date-label" aria-live="polite"></div>
+        <div class="date-picker-wrap" id="datePickerWrap">
+          <button id="dateLabel" class="date-label date-trigger" type="button" aria-haspopup="dialog" aria-expanded="false"></button>
+          <div id="monthPopup" class="month-popup" role="dialog" aria-label="日付を選択">
+            <div class="month-heading"><button id="prevMonth" type="button" aria-label="前の月">‹</button><strong id="monthTitle"></strong><button id="nextMonth" type="button" aria-label="次の月">›</button></div>
+            <div id="monthGrid" class="month-grid"></div>
+          </div>
+        </div>
       </div>
     </header>
     <p class="hint">全スタッフ表示 ／ 15分単位 ／ 表示時間 8:00〜20:00 ／ 空き枠をドラッグして時間を指定、クリックでも予定を追加</p>
@@ -138,6 +160,7 @@
     let currentDate = new Date();
     currentDate.setHours(0, 0, 0, 0);
     let editingId = null;
+    let displayedMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 
     for (const name of staffMembers) {
       const option = document.createElement("option");
@@ -286,6 +309,55 @@
       dateLabel.textContent = new Intl.DateTimeFormat("ja-JP", {
         year: "numeric", month: "long", day: "numeric", weekday: "short"
       }).format(currentDate);
+      renderMonthPicker();
+    }
+
+
+    function renderMonthPicker() {
+      const grid = document.getElementById("monthGrid");
+      const year = displayedMonth.getFullYear();
+      const month = displayedMonth.getMonth();
+      document.getElementById("monthTitle").textContent = new Intl.DateTimeFormat("ja-JP", { year: "numeric", month: "long" }).format(displayedMonth);
+      grid.replaceChildren();
+      for (const day of ["月", "火", "水", "木", "金", "土", "日"]) {
+        const label = document.createElement("div");
+        label.className = "month-weekday";
+        label.textContent = day;
+        grid.appendChild(label);
+      }
+      const first = new Date(year, month, 1);
+      const offset = (first.getDay() + 6) % 7;
+      const gridStart = new Date(year, month, 1 - offset);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      for (let i = 0; i < 42; i++) {
+        const date = new Date(gridStart);
+        date.setDate(gridStart.getDate() + i);
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "month-day";
+        button.textContent = date.getDate();
+        if (date.getMonth() !== month) button.classList.add("outside");
+        if (date.getTime() === currentDate.getTime()) button.classList.add("selected");
+        if (date.getTime() === today.getTime()) button.classList.add("today-mark");
+        button.addEventListener("click", () => {
+          currentDate = new Date(date);
+          currentDate.setHours(0, 0, 0, 0);
+          closeMonthPicker();
+          renderCalendar();
+        });
+        grid.appendChild(button);
+      }
+    }
+    function openMonthPicker() {
+      displayedMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      renderMonthPicker();
+      document.getElementById("monthPopup").classList.add("open");
+      dateLabel.setAttribute("aria-expanded", "true");
+    }
+    function closeMonthPicker() {
+      document.getElementById("monthPopup").classList.remove("open");
+      dateLabel.setAttribute("aria-expanded", "false");
     }
 
     function minutesToTime(minutes) {
@@ -358,6 +430,14 @@
       currentDate.setDate(currentDate.getDate() + days);
       renderCalendar();
     }
+    dateLabel.addEventListener("click", () => {
+      if (document.getElementById("monthPopup").classList.contains("open")) closeMonthPicker();
+      else openMonthPicker();
+    });
+    document.getElementById("prevMonth").addEventListener("click", () => { displayedMonth.setMonth(displayedMonth.getMonth() - 1); renderMonthPicker(); });
+    document.getElementById("nextMonth").addEventListener("click", () => { displayedMonth.setMonth(displayedMonth.getMonth() + 1); renderMonthPicker(); });
+    document.addEventListener("click", (event) => { if (!event.target.closest("#datePickerWrap")) closeMonthPicker(); });
+
     document.getElementById("prevDay").addEventListener("click", () => moveDate(-1));
     document.getElementById("nextDay").addEventListener("click", () => moveDate(1));
     document.getElementById("today").addEventListener("click", () => {
